@@ -13,6 +13,7 @@
         "collateralToken": "0x9839B789b09292c175Cc7173337520fE8fd9d8FE",
         "speed": 5000
     },
+    "randomRange": 20,
     "relayerUrl": "http://localhost:3001",
     "orderbookLength": 5,
     "speed": 50000,

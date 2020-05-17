@@ -6,6 +6,7 @@ const { calcPrecision } = require('../utils')
 
 let defaultAmount = 1 // TOMO
 let minimumPriceStepChange = 1 // TOMO
+let randomRange = 20
 let FIXA = 5 // amount decimals
 let FIXP = 7 // price decimals
 let ORDERBOOK_LENGTH = config.get('orderbookLength') // number of order in orderbook
@@ -119,7 +120,7 @@ const fillOrderbook = async (len, side, nonce = 0) => {
         let orders = []
         for (let i = 0; i < len; i++) {
             let price = findGoodPrice(side, latestPrice)
-            let ranNum = Math.floor(Math.random() * 20) / 100 + 1
+            let ranNum = Math.floor(Math.random() * randomRange) / 100 + 1
 
             let o = {
                 baseToken: baseToken,
@@ -227,6 +228,7 @@ const run = async (p) => {
 
     defaultAmount = parseFloat(new BigNumber(defaultVolume).dividedBy(usdPrice).toFixed(FIXA))
 
+    randomRage = config[pair].randomRange || config.randomRange|| 20
     let speed = config[pair].speed || config.speed || 50000
     while(true) {
         await runMarketMaker()
