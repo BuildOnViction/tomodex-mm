@@ -61,7 +61,7 @@ const runMarketMaker = async () => {
         if (sellOrders.length >= ORDERBOOK_LENGTH
             && buyOrders.length >= ORDERBOOK_LENGTH) {
             console.log('MATCHED ORDER !!!')
-            await match(orderBookData)
+            m = await match(orderBookData)
         }
 
         sellPrices = []
@@ -134,7 +134,7 @@ const cancelOrders = async (nonce) => {
     })
     let cancelHashes = [ ...sellCancelHashes, ...buyCancelHashes ]
     let hashes = cancelHashes.map(c => c.hash)
-    let ret = await tomox.cancelManyOrders(hashes, nonce || 0)
+    let ret = await tomox.cancelManyOrders(hashes, (parseInt(nonce) + 1) || 0)
     ret.forEach(o => {
         console.log('CANCEL', `orderHash=${o.orderHash} orderId=${o.orderID} hash=${o.hash} nonce=${o.nonce}`)
     })
