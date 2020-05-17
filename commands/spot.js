@@ -191,7 +191,7 @@ const match = async (orderBookData) => {
             await createOrder(price, amount, side)
         } else {
             price = price.dividedBy(TOKEN_DECIMALS).toFixed(FIXP, ROUNDING_MODE)
-            amount = amount.dividedBy(BASE_TOKEN_DECIMALS).toFixed(FIXA)
+            amount = defaultAmount.toFixed(FIXA)
 
             await createOrder(price, amount, side)
         }
