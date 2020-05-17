@@ -50,7 +50,7 @@ const runMarketMaker = async () => {
         if (!orderBookData) {
             return
         }
-        latestPrice = new BigNumber(await getLatestPrice(pair)).multipliedBy(TOKEN_DECIMALS)
+        latestPrice = new BigNumber(await getLatestPrice(pair)).multipliedBy(EX_DECIMALS)
         let oorders = (await tomox.getOrders({ baseToken, quoteToken, status: 'OPEN' })).orders
         let porders = (await tomox.getOrders({ baseToken, quoteToken, status: 'PARTIAL_FILLED' })).orders
         orders = [...oorders, ...porders]
@@ -100,14 +100,15 @@ const findGoodPrice = (side) => {
 }
 
 const cancelOrders = async (nonce) => {
+    let lprice = latestPrice.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
     let mmp = minimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
     let k = 1
     let sellCancelHashes = sellOrders.filter(order => {
         let price = new BigNumber(order.pricepoint)
-        if (price.isGreaterThan(latestPrice.plus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
+        if (price.isGreaterThan(lprice.plus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
             return true
         }
-        if (price.isLessThan(latestPrice)) {
+        if (price.isLessThan(lprice)) {
             return true
         }
         if (k > ORDERBOOK_LENGTH) {
@@ -119,10 +120,10 @@ const cancelOrders = async (nonce) => {
     k = 1
     let buyCancelHashes = buyOrders.filter(order => {
         let price = new BigNumber(order.pricepoint)
-        if (price.isLessThan(latestPrice.minus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
+        if (price.isLessThan(lprice.minus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
             return true
         }
-        if (price.isGreaterThan(latestPrice)) {
+        if (price.isGreaterThan(lprice)) {
             return true
         }
         if (k > ORDERBOOK_LENGTH) {
