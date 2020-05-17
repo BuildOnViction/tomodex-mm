@@ -234,6 +234,8 @@ const run = async (p) => {
     while(true) {
         await runMarketMaker()
         await sleep(speed)
+        usdPrice = parseFloat(await getUSDPrice(pair))
+        defaultAmount = parseFloat(new BigNumber(defaultVolume).dividedBy(usdPrice).toFixed(FIXA))
     }
 }
 
