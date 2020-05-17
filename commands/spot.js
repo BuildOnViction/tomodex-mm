@@ -186,13 +186,14 @@ const match = async (orderBookData) => {
 
         let ROUNDING_MODE = (side === 'SELL') ? 1 : 0
 
+        let ranNum = Math.floor(Math.random() * randomRange) / 100 + 1
         if (amount.isEqualTo(0)) {
             price = bestPrice.dividedBy(TOKEN_DECIMALS).toFixed(FIXP)
-            amount = defaultAmount.toFixed(FIXA)
+            amount = (defaultAmount * ranNum).toFixed(FIXA)
             await createOrder(price, amount, side)
         } else {
             price = price.dividedBy(TOKEN_DECIMALS).toFixed(FIXP, ROUNDING_MODE)
-            amount = defaultAmount.toFixed(FIXA)
+            amount = (defaultAmount * ranNum).toFixed(FIXA)
 
             await createOrder(price, amount, side)
         }
