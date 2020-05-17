@@ -17,7 +17,6 @@ let quoteToken = config.get(`${pair}.quoteToken`)
 let TOKEN_DECIMALS = 1e18
 let BASE_TOKEN_DECIMALS = 1e18
 let EX_DECIMALS = 1e8
-let orders = []
 let buyOrders = []
 let sellOrders = []
 
@@ -53,11 +52,12 @@ const runMarketMaker = async () => {
         latestPrice = new BigNumber(await getLatestPrice(pair)).multipliedBy(EX_DECIMALS)
         let oorders = (await tomox.getOrders({ baseToken, quoteToken, status: 'OPEN' })).orders
         let porders = (await tomox.getOrders({ baseToken, quoteToken, status: 'PARTIAL_FILLED' })).orders
-        orders = [...oorders, ...porders]
+        let orders = [...oorders, ...porders]
 
         sellOrders = orders.filter(o => (o.side === 'SELL'))
         buyOrders = orders.filter(o => (o.side === 'BUY'))
 
+        let m = {}
         if (sellOrders.length >= ORDERBOOK_LENGTH
             && buyOrders.length >= ORDERBOOK_LENGTH) {
             console.log('MATCHED ORDER !!!')
@@ -72,7 +72,7 @@ const runMarketMaker = async () => {
         let buy = await fillOrderbook(ORDERBOOK_LENGTH - buyOrders.length, 'BUY', 0)
         let sell = await fillOrderbook(ORDERBOOK_LENGTH - sellOrders.length, 'SELL', (buy || {}).nonce)
 
-        await cancelOrders((sell || {}).nonce)
+        await cancelOrders((sell || {}).nonce || m.nonce)
 
     } catch (err) {
         console.log(err)
@@ -216,18 +216,19 @@ const match = async (orderBookData) => {
         let ROUNDING_MODE = (side === 'SELL') ? 1 : 0
 
         let ranNum = Math.floor(Math.random() * randomRange) / 100 + 1
+        let o
         if (amount.isEqualTo(0)) {
             price = bestPrice.dividedBy(TOKEN_DECIMALS).toFixed(FIXP)
             amount = (defaultAmount * ranNum).toFixed(FIXA)
-            await createOrder(price, amount, side)
+            o = await createOrder(price, amount, side)
         } else {
             price = price.dividedBy(TOKEN_DECIMALS).toFixed(FIXP, ROUNDING_MODE)
             amount = (defaultAmount * ranNum).toFixed(FIXA)
 
-            await createOrder(price, amount, side)
+            o = await createOrder(price, amount, side)
         }
 
-
+        return o
     } catch (err) {
         console.log(err)
     }
