@@ -228,7 +228,7 @@ const run = async (p) => {
 
     defaultAmount = parseFloat(new BigNumber(defaultVolume).dividedBy(usdPrice).toFixed(FIXA))
 
-    randomRage = config[pair].randomRange || config.randomRange|| 20
+    randomRange = config[pair].randomRange || config.randomRange|| 20
     let speed = config[pair].speed || config.speed || 50000
     while(true) {
         await runMarketMaker()
