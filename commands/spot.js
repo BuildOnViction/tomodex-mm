@@ -17,11 +17,15 @@ let quoteToken = config.get(`${pair}.quoteToken`)
 let TOKEN_DECIMALS = 1e18
 let BASE_TOKEN_DECIMALS = 1e18
 let EX_DECIMALS = 1e8
+let orders = []
+let buyOrders = []
+let sellOrders = []
 
 let sleep = (time) => new Promise((resolve) => setTimeout(resolve, time))
 let sellPrices = []
 let buyPrices = []
 let isFirstOrder = true
+let latestPrice = 0
 
 const createOrder = async (price, amount, side) => {
     let prec = calcPrecision(price)
@@ -46,9 +50,16 @@ const runMarketMaker = async () => {
         if (!orderBookData) {
             return
         }
+        latestPrice = new BigNumber(await getLatestPrice(pair)).multipliedBy(TOKEN_DECIMALS)
+        let oorders = (await tomox.getOrders({ baseToken, quoteToken, status: 'OPEN' })).orders
+        let porders = (await tomox.getOrders({ baseToken, quoteToken, status: 'PARTIAL_FILLED' })).orders
+        orders = [...oorders, ...porders]
 
-        if (orderBookData.asks.length >= ORDERBOOK_LENGTH
-            && orderBookData.bids.length >= ORDERBOOK_LENGTH) {
+        sellOrders = orders.filter(o => (o.side === 'SELL'))
+        buyOrders = orders.filter(o => (o.side === 'BUY'))
+
+        if (sellOrders.length >= ORDERBOOK_LENGTH
+            && buyOrders.length >= ORDERBOOK_LENGTH) {
             console.log('MATCHED ORDER !!!')
             await match(orderBookData)
         }
@@ -58,8 +69,8 @@ const runMarketMaker = async () => {
         orderBookData.asks.forEach(a => sellPrices.push(new BigNumber(a.pricepoint).dividedBy(TOKEN_DECIMALS).toFixed(FIXP)))
         orderBookData.bids.forEach(b => buyPrices.push(new BigNumber(b.pricepoint).dividedBy(TOKEN_DECIMALS).toFixed(FIXP)))
 
-        let buy = await fillOrderbook(ORDERBOOK_LENGTH - orderBookData.bids.length, 'BUY', 0)
-        let sell = await fillOrderbook(ORDERBOOK_LENGTH - orderBookData.asks.length, 'SELL', (buy || {}).nonce)
+        let buy = await fillOrderbook(ORDERBOOK_LENGTH - buyOrders.length, 'BUY', 0)
+        let sell = await fillOrderbook(ORDERBOOK_LENGTH - sellOrders.length, 'SELL', (buy || {}).nonce)
 
         await cancelOrders((sell || {}).nonce)
 
@@ -68,7 +79,7 @@ const runMarketMaker = async () => {
     }
 }
 
-const findGoodPrice = (side, latestPrice) => {
+const findGoodPrice = (side) => {
     let i = 1
     while (true) {
         let step = minimumPriceStepChange.multipliedBy(i)
@@ -89,20 +100,38 @@ const findGoodPrice = (side, latestPrice) => {
 }
 
 const cancelOrders = async (nonce) => {
-    let orders = (await tomox.getOrders({ baseToken, quoteToken, status: 'OPEN' })).orders
-    let latestPrice = new BigNumber(await getLatestPrice(pair)).multipliedBy(TOKEN_DECIMALS)
     let mmp = minimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
-    let cancelHashes = orders.filter(order => {
-        if (order.status !== 'OPEN') return false
+    let k = 1
+    let sellCancelHashes = sellOrders.filter(order => {
         let price = new BigNumber(order.pricepoint)
-        if (order.side === 'SELL' && price.isGreaterThan(latestPrice.plus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
+        if (price.isGreaterThan(latestPrice.plus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
             return true
         }
-        if (order.side === 'BUY' && price.isLessThan(latestPrice.minus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
+        if (price.isLessThan(latestPrice)) {
             return true
         }
+        if (k > ORDERBOOK_LENGTH) {
+            return true
+        }
+        k++
         return false
     })
+    k = 1
+    let buyCancelHashes = buyOrders.filter(order => {
+        let price = new BigNumber(order.pricepoint)
+        if (price.isLessThan(latestPrice.minus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
+            return true
+        }
+        if (price.isGreaterThan(latestPrice)) {
+            return true
+        }
+        if (k > ORDERBOOK_LENGTH) {
+            return true
+        }
+        k++
+        return false
+    })
+    let cancelHashes = [ ...sellCancelHashes, ...buyCancelHashes ]
     let hashes = cancelHashes.map(c => c.hash)
     let ret = await tomox.cancelManyOrders(hashes, nonce || 0)
     ret.forEach(o => {
@@ -115,11 +144,10 @@ const fillOrderbook = async (len, side, nonce = 0) => {
     if (len <= 0) return { nonce,  hash }
 
     try {
-        latestPrice = new BigNumber(await getLatestPrice(pair)).multipliedBy(EX_DECIMALS)
         let amount = defaultAmount
         let orders = []
         for (let i = 0; i < len; i++) {
-            let price = findGoodPrice(side, latestPrice)
+            let price = findGoodPrice(side)
             let ranNum = Math.floor(Math.random() * randomRange) / 100 + 1
 
             let o = {
