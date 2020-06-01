@@ -1,9 +1,13 @@
 {
     "TOMO-BTC": {
         "pkey": "0x",
+        "matches": [ 
+            "0xxxx"
+        ],
         "baseToken": "0x0000000000000000000000000000000000000001",
         "quoteToken": "0xBD8b2Fb871F97b2d5F0A1af3bF73619b09174B2A",
         "orderbookLength": 10,
+        "matchedSpeed": 5000,
         "speed": 5000
     },
     "USD-60": {
@@ -17,7 +21,9 @@
     "relayerUrl": "http://localhost:3001",
     "orderbookLength": 5,
     "speed": 50000,
+    "matchedSpeed": 5000,
     "volume": 10,
+    "matchedVolume": 10,
     "lendingVolume": 500,
     "step": 0.01,
     "lendStep": 0.1

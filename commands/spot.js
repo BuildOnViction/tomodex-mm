@@ -1,10 +1,12 @@
 const { getLatestPrice, getUSDPrice } = require('../services/price')
 const TomoX = require('tomoxjs')
+const TomoJS = require('tomojs')
 const BigNumber = require('bignumber.js')
 const config = require('config')
 const { calcPrecision } = require('../utils')
 
 let defaultAmount = 1 // TOMO
+let defaultMatchedAmount = 1
 let minimumPriceStepChange = 1 // TOMO
 let randomRange = 20
 let FIXA = 5 // amount decimals
@@ -19,6 +21,7 @@ let BASE_TOKEN_DECIMALS = 1e18
 let EX_DECIMALS = 1e8
 let buyOrders = []
 let sellOrders = []
+let randomWallets = []
 
 let sleep = (time) => new Promise((resolve) => setTimeout(resolve, time))
 let sellPrices = []
@@ -43,7 +46,25 @@ const createOrder = async (price, amount, side) => {
     return o
 }
 
-const runMarketMaker = async () => {
+const createRandomOrder = async (wallet, price, amount, side) => {
+    let prec = calcPrecision(price)
+    price = new BigNumber(price).toFixed(prec.pricePrecision)
+    amount = new BigNumber(amount).toFixed(prec.amountPrecision)
+    FIXP = prec.pricePrecision
+    FIXA = prec.amountPrecision
+    let o = await wallet.createOrder({
+        baseToken: baseToken,
+        quoteToken: quoteToken,
+        price: price,
+        amount: amount,
+        side: side
+    })
+    console.log(`${side} wallet=${wallet.coinbase} pair=${pair} price=${price} amount=${amount} hash=${o.hash} nonce=${o.nonce}`)
+    return o
+}
+
+
+const runMarketMaker = async (cancel = false) => {
     try {
         const orderBookData = await tomox.getOrderBook({ baseToken, quoteToken })
         if (!orderBookData) {
@@ -71,6 +92,8 @@ const runMarketMaker = async () => {
 
         let buy = await fillOrderbook(ORDERBOOK_LENGTH - buyOrders.length, 'BUY', 0)
         let sell = await fillOrderbook(ORDERBOOK_LENGTH - sellOrders.length, 'SELL', (buy || {}).nonce)
+
+        if (cancel === false) return
 
         await cancelOrders((sell || {}).nonce || m.nonce)
 
@@ -183,52 +206,46 @@ const cancel = async (hash, nonce) => {
 
 const match = async (orderBookData) => {
     try {
-        let remotePrice = parseFloat(await getLatestPrice(pair))
-        let bestPrice = new BigNumber(new BigNumber(remotePrice).toFixed(FIXP)).multipliedBy(TOKEN_DECIMALS)
-        let price = new BigNumber(0)
-        let amount = new BigNumber(0)
-        let side = 'BUY'
+        let bestAsk = new BigNumber(orderBookData.asks[0].pricepoint)
+        let bestBid = new BigNumber(orderBookData.bids[0].pricepoint)
 
-        orderBookData.asks.forEach(ask => {
-            let p = new BigNumber(ask.pricepoint)
-            let a = new BigNumber(ask.amount)
-            if (p.isLessThanOrEqualTo(bestPrice) &&
-                a.dividedBy(BASE_TOKEN_DECIMALS).multipliedBy(10 ** FIXA).isGreaterThan(new BigNumber(1))
-            ) {
-                side = 'BUY'
-                price = p
-                amount = amount.plus(a)
-            }
-        })
+        let price = bestAsk.plus(bestBid).dividedBy(2)
 
-        orderBookData.bids.forEach(bid => {
-            let p = new BigNumber(bid.pricepoint)
-            let a = new BigNumber(bid.amount)
-            if (p.isGreaterThanOrEqualTo(bestPrice) &&
-                a.dividedBy(BASE_TOKEN_DECIMALS).multipliedBy(10 ** FIXA).isGreaterThan(new BigNumber(1))
-            ) {
-                side = 'SELL'
-                price = p
-                amount = amount.plus(a)
-            }
-        })
+        let wallet = randomWallets[Math.floor(Math.random() * randomWallets.length)]
 
-        let ROUNDING_MODE = (side === 'SELL') ? 1 : 0
-
-        let ranNum = Math.floor(Math.random() * randomRange) / 100 + 1
-        let o
-        if (amount.isEqualTo(0)) {
-            price = bestPrice.dividedBy(TOKEN_DECIMALS).toFixed(FIXP)
-            amount = (defaultAmount * ranNum).toFixed(FIXA)
-            o = await createOrder(price, amount, side)
-        } else {
-            price = price.dividedBy(TOKEN_DECIMALS).toFixed(FIXP, ROUNDING_MODE)
-            amount = (defaultAmount * ranNum).toFixed(FIXA)
-
-            o = await createOrder(price, amount, side)
+        let tokenBalances = await wallet.getAccount()
+        if (tokenBalances[baseToken].inOrderBalance !== '0') {
+            let open = (await wallet.getOrders({ baseToken, quoteToken, status: 'OPEN' })).orders
+            let pf = (await wallet.getOrders({ baseToken, quoteToken, status: 'PARTIAL_FILLED' })).orders
+            let hashes = [ ...open, ...pf].map(o => o.hash)
+            await wallet.cancelManyOrders(hashes)
+            return {}
         }
 
+        if (tokenBalances[quoteToken].inOrderBalance !== '0') {
+            let open = (await wallet.getOrders({ baseToken, quoteToken, status: 'OPEN' })).orders
+            let pf = (await wallet.getOrders({ baseToken, quoteToken, status: 'PARTIAL_FILLED' })).orders
+            let hashes = [ ...open, ...pf].map(o => o.hash)
+            await wallet.cancelManyOrders(hashes)
+            return {}
+        }
+
+        let quoteBalance = tokenBalances[quoteToken].inUsdBalance
+        let baseBalance = tokenBalances[baseToken].inUsdBalance
+
+        let side = (parseFloat(quoteBalance) > parseFloat(baseBalance)) ? 'BUY' : 'SELL'
+        let iside = (side === 'BUY') ? 'SELL' : 'BUY'
+
+        let ROUNDING_MODE = (side === 'SELL') ? 1 : 0
+        let ranNum = Math.floor(Math.random() * randomRange) / 100 + 1
+        price = price.dividedBy(TOKEN_DECIMALS).toFixed(FIXP, ROUNDING_MODE)
+        amount = (defaultMatchedAmount * ranNum).toFixed(FIXA)
+
+        await createRandomOrder(wallet, price, amount, side)
+
+        let o = await createOrder(price, amount, iside)
         return o
+
     } catch (err) {
         console.log(err)
     }
@@ -237,10 +254,20 @@ const match = async (orderBookData) => {
 const run = async (p) => {
     tomox = new TomoX(config.get('relayerUrl'), '', config[p].pkey)
     pair = p || 'BTC-TOMO'
+
     ORDERBOOK_LENGTH = config[p].orderbookLength || config.get('orderbookLength') || 5
+    if (config[p].orderbookLength === 0) {
+        ORDERBOOK_LENGTH = 0
+    }
+
     baseToken = config[p].baseToken
     quoteToken = config[p].quoteToken
     defaultVolume = config[p].volume || config.volume
+    defaultMatchedVolume = config[p].matchedVolume || config.matchedVolume || defaultVolume
+    let randomPkeys = config[p].matches
+    for (let k of randomPkeys) {
+        randomWallets.push(new TomoX(config.get('relayerUrl'), '', k))
+    }
 
     let remotePrice = parseFloat(await getLatestPrice(pair))
     let price = new BigNumber(remotePrice).multipliedBy(EX_DECIMALS)
@@ -258,14 +285,28 @@ const run = async (p) => {
     FIXA = prec.amountPrecision
 
     defaultAmount = parseFloat(new BigNumber(defaultVolume).dividedBy(usdPrice).toFixed(FIXA))
+    defaultMatchedAmount = parseFloat(new BigNumber(defaultMatchedVolume).dividedBy(usdPrice).toFixed(FIXA))
 
     randomRange = config[pair].randomRange || config.randomRange|| 20
     let speed = config[pair].speed || config.speed || 50000
+    let matchedSpeed = config[pair].matchedSpeed || config.matchedSpeed || speed
+
+    let k = matchedSpeed
+    let cancel = false
+    let s = (speed > matchedSpeed) ? matchedSpeed : speed
+
     while(true) {
-        await runMarketMaker()
-        await sleep(speed)
-        usdPrice = parseFloat(await getUSDPrice(pair))
-        defaultAmount = parseFloat(new BigNumber(defaultVolume).dividedBy(usdPrice).toFixed(FIXA))
+        await runMarketMaker(cancel)
+        await sleep(s)
+        k = k + matchedSpeed
+        if (k > speed) {
+            cancel = true
+            k = matchedSpeed
+            usdPrice = parseFloat(await getUSDPrice(pair))
+            defaultAmount = parseFloat(new BigNumber(defaultVolume).dividedBy(usdPrice).toFixed(FIXA))
+        } else {
+            cancel = false
+        }
     }
 }
 
