@@ -299,7 +299,7 @@ const run = async (p) => {
         await runMarketMaker(cancel)
         await sleep(s)
         k = k + matchedSpeed
-        if (k > speed) {
+        if (k >= speed) {
             cancel = true
             k = matchedSpeed
             usdPrice = parseFloat(await getUSDPrice(pair))
