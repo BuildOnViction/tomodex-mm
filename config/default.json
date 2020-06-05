@@ -1,5 +1,5 @@
 {
-    "TOMO-BTC": {
+    "ETC-BTC": {
         "pkey": "0x",
         "matches": [ 
             "0xxxx"
@@ -20,6 +20,7 @@
     "randomRange": 50,
     "relayerUrl": "http://localhost:3001",
     "orderbookLength": 5,
+    "lendOrderbookLength": 2,
     "speed": 50000,
     "matchedSpeed": 5000,
     "volume": 10,

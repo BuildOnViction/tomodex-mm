@@ -78,7 +78,7 @@ const runMarketMaker = async () => {
 
 const run = async (p) => {
     let usdPrice = parseFloat(await getUSDPrice(p))
-    let lendingVolume = config[pair].lendingVolume || config.lendingVolume
+    let lendingVolume = config[p].lendingVolume || config.lendingVolume
     defaultAmount = parseFloat(new BigNumber(lendingVolume).dividedBy(usdPrice).toFixed(FIXA))
     tomox = new TomoX(config.get('relayerUrl'), '', config[p].pkey)
     pair = p || 'USD-60'
