@@ -259,7 +259,7 @@ const run = async (p) => {
     tomox = new TomoX(config.get('relayerUrl'), '', config[p].pkey)
     pair = p || 'BTC-TOMO'
 
-    ORDERBOOK_LENGTH = config[p].orderbookLength || config.get('orderbookLength') || 5
+    SELL_ORDERBOOK_LENGTH = BUY_ORDERBOOK_LENGTH = ORDERBOOK_LENGTH = config[p].orderbookLength || config.get('orderbookLength') || 5
     if (config[p].orderbookLength === 0) {
         ORDERBOOK_LENGTH = 0
     }
@@ -277,7 +277,7 @@ const run = async (p) => {
     let price = new BigNumber(remotePrice).multipliedBy(EX_DECIMALS)
     let usdPrice = parseFloat(await getUSDPrice(pair))
     let step = config[p].step || config.step || 0.01
-    minimumPriceStepChange = price.multipliedBy(step)
+    buyMinimumPriceStepChange = sellMinimumPriceStepChange = minimumPriceStepChange = price.multipliedBy(step)
 
     let d = (await tomox.getTokenInfo(quoteToken)).decimals
     TOKEN_DECIMALS = 10 ** parseInt(d)
@@ -300,6 +300,16 @@ const run = async (p) => {
     let s = (speed > matchedSpeed) ? matchedSpeed : speed
 
     while(true) {
+        let baseTokenBalance = new BigNumber((await tomox.getAccount(false, baseToken)).inUsdBalance)
+        let quoteTokenBalance = new BigNumber((await tomox.getAccount(false, quoteToken)).inUsdBalance)
+        let rate = getStepRate(baseTokenBalance, quoteTokenBalance)
+
+        if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
+            buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(rate)
+        } else {
+            sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(rate)
+        }
+
         await runMarketMaker(cancel)
         await sleep(s)
         k = k + matchedSpeed
@@ -310,6 +320,18 @@ const run = async (p) => {
             defaultAmount = parseFloat(new BigNumber(defaultVolume).dividedBy(usdPrice).toFixed(FIXA))
         } else {
             cancel = false
+        }
+    }
+}
+function getStepRate(baseTokenBalance, quoteTokenBalance) {
+    let rate = 10 * parseFloat(baseTokenBalance.multipliedBy(2).dividedBy(quoteTokenBalance.plus(baseTokenBalance)).toFixed(FIXP))
+    if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
+        rate = 10 * parseFloat(quoteTokenBalance.multipliedBy(2).dividedBy(quoteTokenBalance.plus(baseTokenBalance)).toFixed(FIXP))
+    }
+
+    for (let i = 1; i <= 10; i++) {
+        if ((rate < i) && (rate > (i - 1))) {
+            return 10 - (i - 1)
         }
     }
 }
