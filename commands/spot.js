@@ -257,7 +257,7 @@ const match = async (orderBookData) => {
             console.log(`BUY Use current random wallet ${wallet.coinbase} balance`, amount.toString(10))
         }
 
-        if (parseFloat(amount) < (defaultMatchedAmount/5)) {
+        if (parseFloat(amount) < (defaultMatchedAmount/2)) {
             console.log(`Out of fund ${wallet.coinbase}`)
             outOfFundWallet = wallet.coinbase
         }
