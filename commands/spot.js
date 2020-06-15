@@ -246,12 +246,12 @@ const match = async (orderBookData) => {
         amount = (defaultMatchedAmount * ranNum).toFixed(FIXA)
 
         if (side === 'SELL' && new BigNumber(tokenBalances[baseToken].balance).isLessThan(new BigNumber(amount).multipliedBy(10 ** tokenBalances[baseToken].decimals))) {
-            amount = new BigNumber(tokenBalances[baseToken].balance).multipliedBy(99).dividedBy(100).dividedBy(10 ** tokenBalances[baseToken].decimals).toFixed(FIXA)
+            amount = new BigNumber(tokenBalances[baseToken].balance).multipliedBy(95).dividedBy(100).dividedBy(10 ** tokenBalances[baseToken].decimals).toFixed(FIXA, 1)
             console.log(`SELL Use current random wallet ${wallet.coinbase} balance`, amount.toString(10))
         }
 
         if (side === 'BUY' && new BigNumber(tokenBalances[quoteToken].balance).dividedBy(pricepoint).isLessThan(new BigNumber(amount))) {
-            amount = new BigNumber(tokenBalances[quoteToken].balance).dividedBy(pricepoint).multipliedBy(99).dividedBy(100).toFixed(FIXA)
+            amount = new BigNumber(tokenBalances[quoteToken].balance).dividedBy(pricepoint).multipliedBy(95).dividedBy(100).toFixed(FIXA, 1)
             console.log(`BUY Use current random wallet ${wallet.coinbase} balance`, amount.toString(10))
         }
 
