@@ -19,6 +19,7 @@
     },
     "randomRange": 50,
     "relayerUrl": "http://localhost:3001",
+    "rpc": "http://localhost:8545",
     "orderbookLength": 5,
     "lendOrderbookLength": 2,
     "speed": 50000,
