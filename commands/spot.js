@@ -1,5 +1,6 @@
 const { getLatestPrice, getUSDPrice } = require('../services/price')
 const TomoX = require('tomoxjs')
+const TomoJS = require('tomojs')
 const BigNumber = require('bignumber.js')
 const config = require('config')
 const { calcPrecision } = require('../utils')
@@ -29,6 +30,7 @@ let sellPrices = []
 let buyPrices = []
 let isFirstOrder = true
 let latestPrice = 0
+let outOfFundWallet = ''
 
 const createOrder = async (price, amount, side) => {
     let prec = calcPrecision(price)
@@ -255,6 +257,11 @@ const match = async (orderBookData) => {
             console.log(`BUY Use current random wallet ${wallet.coinbase} balance`, amount.toString(10))
         }
 
+        if (parseFloat(amount) < (defaultMatchedAmount/5)) {
+            console.log(`Out of fund ${wallet.coinbase}`)
+            outOfFundWallet = wallet.coinbase
+        }
+
         await createRandomOrder(wallet, price, amount, side)
 
         let o = await createOrder(price, amount, iside)
@@ -267,6 +274,7 @@ const match = async (orderBookData) => {
 
 const run = async (p) => {
     tomox = new TomoX(config.get('relayerUrl'), '', config[p].pkey)
+    tomojs = await TomoJS.setProvider(config.get('rpc'), config[p].pkey)
     pair = p || 'BTC-TOMO'
 
     SELL_ORDERBOOK_LENGTH = BUY_ORDERBOOK_LENGTH = ORDERBOOK_LENGTH = config[p].orderbookLength || config.get('orderbookLength') || 5
@@ -310,6 +318,20 @@ const run = async (p) => {
     let s = (speed > matchedSpeed) ? matchedSpeed : speed
 
     while(true) {
+
+        if (outOfFundWallet !== '') {
+            console.log(`SEND ${defaultMatchedAmount} ${pair.split('-')[0]} from ${tomojs.coinbase} to ${outOfFundWallet}`)
+            if (baseToken !== '0x0000000000000000000000000000000000000001') {
+                await tomojs.tomoz.transfer(baseToken, outOfFundWallet, defaultMatchedAmount)
+            } else {
+                await tomojs.send({
+                    address: outOfFundWallet,
+                    value: String(defaultMatchedAmount * 2)
+                })
+            }
+            outOfFundWallet = ''
+        }
+
         let baseTokenBalance = new BigNumber((await tomox.getAccount(false, baseToken)).inUsdBalance)
         let quoteTokenBalance = new BigNumber((await tomox.getAccount(false, quoteToken)).inUsdBalance)
         let rate = getStepRate(baseTokenBalance, quoteTokenBalance)
@@ -335,6 +357,7 @@ const run = async (p) => {
         }
     }
 }
+
 function getStepRate(baseTokenBalance, quoteTokenBalance) {
     let rate = 10 * parseFloat(baseTokenBalance.multipliedBy(2).dividedBy(quoteTokenBalance.plus(baseTokenBalance)).toFixed(FIXP))
     if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
