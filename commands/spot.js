@@ -11,6 +11,8 @@ let randomRange = 20
 let FIXA = 5 // amount decimals
 let FIXP = 7 // price decimals
 let ORDERBOOK_LENGTH = config.get('orderbookLength') // number of order in orderbook
+let BUY_ORDERBOOK_LENGTH = config.get('orderbookLength')
+let SELL_ORDERBOOK_LENGTH = config.get('orderbookLength')
 let tomox = new TomoX()
 let pair = 'TOMO-BTC'
 let baseToken = config.get(`${pair}.baseToken`)
@@ -78,8 +80,8 @@ const runMarketMaker = async (cancel = false) => {
         buyOrders = orders.filter(o => (o.side === 'BUY'))
 
         let m = {}
-        if (sellOrders.length >= ORDERBOOK_LENGTH
-            && buyOrders.length >= ORDERBOOK_LENGTH) {
+        if (sellOrders.length >= SELL_ORDERBOOK_LENGTH
+            && buyOrders.length >= BUY_ORDERBOOK_LENGTH) {
             console.log('MATCHED ORDER !!!')
             m = await match(orderBookData)
         }
@@ -89,8 +91,8 @@ const runMarketMaker = async (cancel = false) => {
         orderBookData.asks.forEach(a => sellPrices.push(new BigNumber(a.pricepoint).dividedBy(TOKEN_DECIMALS).toFixed(FIXP)))
         orderBookData.bids.forEach(b => buyPrices.push(new BigNumber(b.pricepoint).dividedBy(TOKEN_DECIMALS).toFixed(FIXP)))
 
-        let buy = await fillOrderbook(ORDERBOOK_LENGTH - buyOrders.length, 'BUY', 0)
-        let sell = await fillOrderbook(ORDERBOOK_LENGTH - sellOrders.length, 'SELL', (buy || {}).nonce)
+        let buy = await fillOrderbook(BUY_ORDERBOOK_LENGTH - buyOrders.length, 'BUY', 0)
+        let sell = await fillOrderbook(SELL_ORDERBOOK_LENGTH - sellOrders.length, 'SELL', (buy || {}).nonce)
 
         if (cancel === false) return
 
@@ -104,7 +106,8 @@ const runMarketMaker = async (cancel = false) => {
 const findGoodPrice = (side) => {
     let i = 1
     while (true) {
-        let step = minimumPriceStepChange.multipliedBy(i)
+        let step = (side === 'BUY') ? buyMinimumPriceStepChange.multipliedBy(i)
+            : sellMinimumPriceStepChange.multipliedBy(i)
         let price = (side === 'BUY') ? latestPrice.minus(step)
             : latestPrice.plus(step)
         let pricepoint = price.dividedBy(EX_DECIMALS).toFixed(FIXP)
@@ -123,17 +126,17 @@ const findGoodPrice = (side) => {
 
 const cancelOrders = async (nonce) => {
     let lprice = latestPrice.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
-    let mmp = minimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
     let k = 1
     let sellCancelHashes = sellOrders.filter(order => {
+        let mmp = sellMinimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
         let price = new BigNumber(order.pricepoint)
-        if (price.isGreaterThan(lprice.plus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
+        if (price.isGreaterThan(lprice.plus(mmp.multipliedBy(SELL_ORDERBOOK_LENGTH)))) {
             return true
         }
         if (price.isLessThan(lprice)) {
             return true
         }
-        if (k > ORDERBOOK_LENGTH) {
+        if (k > SELL_ORDERBOOK_LENGTH) {
             return true
         }
         k++
@@ -141,14 +144,15 @@ const cancelOrders = async (nonce) => {
     })
     k = 1
     let buyCancelHashes = buyOrders.filter(order => {
+        let mmp = buyMinimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
         let price = new BigNumber(order.pricepoint)
-        if (price.isLessThan(lprice.minus(mmp.multipliedBy(ORDERBOOK_LENGTH)))) {
+        if (price.isLessThan(lprice.minus(mmp.multipliedBy(BUY_ORDERBOOK_LENGTH)))) {
             return true
         }
         if (price.isGreaterThan(lprice)) {
             return true
         }
-        if (k > ORDERBOOK_LENGTH) {
+        if (k > BUY_ORDERBOOK_LENGTH) {
             return true
         }
         k++
@@ -306,8 +310,10 @@ const run = async (p) => {
 
         if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
             buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(rate)
+            BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/rate)
         } else {
             sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(rate)
+            SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/rate)
         }
 
         await runMarketMaker(cancel)
