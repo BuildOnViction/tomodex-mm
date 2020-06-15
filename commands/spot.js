@@ -241,12 +241,18 @@ const match = async (orderBookData) => {
 
         let ROUNDING_MODE = (side === 'SELL') ? 1 : 0
         let ranNum = Math.floor(Math.random() * randomRange) / 100 + 1
+        pricepoint = price
         price = price.dividedBy(TOKEN_DECIMALS).toFixed(FIXP, ROUNDING_MODE)
         amount = (defaultMatchedAmount * ranNum).toFixed(FIXA)
 
         if (side === 'SELL' && new BigNumber(tokenBalances[baseToken].balance).isLessThan(new BigNumber(amount).multipliedBy(10 ** tokenBalances[baseToken].decimals))) {
-            amount = new BigNumber(tokenBalances[baseToken].balance).multipliedBy(99).dividedBy(100).dividedBy(10 ** tokenBalances[baseToken].decimals)
-            console.log('Use current random wallet balance', amount.toString(10))
+            amount = new BigNumber(tokenBalances[baseToken].balance).multipliedBy(99).dividedBy(100).dividedBy(10 ** tokenBalances[baseToken].decimals).toFixed(FIXA)
+            console.log('SELL Use current random wallet balance', amount.toString(10))
+        }
+
+        if (side === 'BUY' && new BigNumber(tokenBalances[quoteToken].balance).dividedBy(pricepoint).isLessThan(new BigNumber(amount))) {
+            amount = new BigNumber(tokenBalances[quoteToken].balance).dividedBy(pricepoint).multipliedBy(99).dividedBy(100).toFixed(FIXA)
+            console.log('BUY Use current random wallet balance', amount.toString(10))
         }
 
         await createRandomOrder(wallet, price, amount, side)
