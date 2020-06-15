@@ -322,7 +322,7 @@ const run = async (p) => {
         if (outOfFundWallet !== '') {
             console.log(`SEND ${defaultMatchedAmount} ${pair.split('-')[0]} from ${tomojs.coinbase} to ${outOfFundWallet}`)
             if (baseToken !== '0x0000000000000000000000000000000000000001') {
-                await tomojs.tomoz.transfer(baseToken, outOfFundWallet, defaultMatchedAmount)
+                await tomojs.tomoz.transfer(baseToken, outOfFundWallet, String(defaultMatchedAmount * 2))
             } else {
                 await tomojs.send({
                     address: outOfFundWallet,
