@@ -342,7 +342,7 @@ function getStepRate(baseTokenBalance, quoteTokenBalance) {
     }
 
     for (let i = 1; i <= 10; i++) {
-        if ((rate < i) && (rate >= (i - 1))) {
+        if ((rate <= i) && (rate > (i - 1))) {
             return 10 - (i - 1)
         }
     }
