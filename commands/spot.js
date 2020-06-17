@@ -332,6 +332,8 @@ const run = async (p) => {
             outOfFundWallet = ''
         }
 
+        buyMinimumPriceStepChange = sellMinimumPriceStepChange = minimumPriceStepChange
+
         let baseTokenBalance = new BigNumber((await tomox.getAccount(false, baseToken)).inUsdBalance)
         let quoteTokenBalance = new BigNumber((await tomox.getAccount(false, quoteToken)).inUsdBalance)
         let rate = getStepRate(baseTokenBalance, quoteTokenBalance)
