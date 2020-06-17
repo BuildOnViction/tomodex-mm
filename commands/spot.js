@@ -216,6 +216,12 @@ const match = async (orderBookData) => {
 
         let price = bestAsk.plus(bestBid).dividedBy(2)
 
+        let lprice = latestPrice.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
+
+        if (lprice.isGreaterThan(bestBid) && lprice.isLessThan(bestAsk)) {
+            price = lprice
+        }
+
         let wallet = randomWallets[Math.floor(Math.random() * randomWallets.length)]
 
         let tokenBalances = await wallet.getAccount()
@@ -292,10 +298,10 @@ const run = async (p) => {
     }
 
     let remotePrice = parseFloat(await getLatestPrice(pair))
-    let price = new BigNumber(remotePrice).multipliedBy(EX_DECIMALS)
+    latestPrice = new BigNumber(remotePrice).multipliedBy(EX_DECIMALS)
     let usdPrice = parseFloat(await getUSDPrice(pair))
     let step = config[p].step || config.step || 0.01
-    buyMinimumPriceStepChange = sellMinimumPriceStepChange = minimumPriceStepChange = price.multipliedBy(step)
+    buyMinimumPriceStepChange = sellMinimumPriceStepChange = minimumPriceStepChange = latestPrice.multipliedBy(step)
 
     let d = (await tomox.getTokenInfo(quoteToken)).decimals
     TOKEN_DECIMALS = 10 ** parseInt(d)
@@ -332,7 +338,7 @@ const run = async (p) => {
             outOfFundWallet = ''
         }
 
-        buyMinimumPriceStepChange = sellMinimumPriceStepChange = minimumPriceStepChange
+        buyMinimumPriceStepChange = sellMinimumPriceStepChange = minimumPriceStepChange = latestPrice.multipliedBy(step)
 
         let baseTokenBalance = new BigNumber((await tomox.getAccount(false, baseToken)).inUsdBalance)
         let quoteTokenBalance = new BigNumber((await tomox.getAccount(false, quoteToken)).inUsdBalance)
