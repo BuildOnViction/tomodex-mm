@@ -31,6 +31,7 @@ let buyPrices = []
 let isFirstOrder = true
 let latestPrice = 0
 let outOfFundWallet = ''
+let balanceRate = 1
 
 const createOrder = async (price, amount, side) => {
     let prec = calcPrecision(price)
@@ -174,6 +175,13 @@ const fillOrderbook = async (len, side, nonce = 0) => {
 
     try {
         let amount = defaultAmount
+        if (side === 'SELL') {
+            let rate = Math.ceil(ORDERBOOK_LENGTH/BUY_ORDERBOOK_LENGTH)
+            amount = amount * rate
+        } else {
+            let rate = Math.ceil(ORDERBOOK_LENGTH/SELL_ORDERBOOK_LENGTH)
+            amount = amount * rate
+        }
         let orders = []
         for (let i = 0; i < len; i++) {
             let price = findGoodPrice(side)
@@ -346,14 +354,14 @@ const run = async (p) => {
 
         let baseTokenBalance = new BigNumber((await tomox.getAccount(false, baseToken)).inUsdBalance)
         let quoteTokenBalance = new BigNumber((await tomox.getAccount(false, quoteToken)).inUsdBalance)
-        let rate = getStepRate(baseTokenBalance, quoteTokenBalance)
+        balanceRate = getStepRate(baseTokenBalance, quoteTokenBalance)
 
         if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
-            buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(rate)
-            BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/rate)
+            buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
+            BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
         } else {
-            sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(rate)
-            SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/rate)
+            sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
+            SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
         }
 
         await runMarketMaker(cancel)
