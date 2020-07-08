@@ -356,6 +356,8 @@ const run = async (p) => {
         let quoteTokenBalance = new BigNumber((await tomox.getAccount(false, quoteToken)).inUsdBalance)
         balanceRate = getStepRate(baseTokenBalance, quoteTokenBalance)
 
+        SELL_ORDERBOOK_LENGTH = BUY_ORDERBOOK_LENGTH = ORDERBOOK_LENGTH
+
         if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
             buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
             BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
