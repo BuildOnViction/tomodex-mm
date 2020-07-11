@@ -102,6 +102,11 @@ const runMarketMaker = async (cancel = false) => {
         await cancelOrders((sell || {}).nonce || (m || {}).nonce)
 
     } catch (err) {
+        try {
+            await cancelOrders()
+        } catch (e) {
+            console.log('Cancel', e)
+        }
         console.log(err)
     }
 }
