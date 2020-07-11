@@ -100,14 +100,16 @@ const runMarketMaker = async (cancel = false) => {
         if (cancel === false) return
 
         await cancelOrders((sell || {}).nonce || (m || {}).nonce)
+        return
 
     } catch (err) {
-        try {
-            await cancelOrders()
-        } catch (e) {
-            console.log('Cancel', e)
-        }
         console.log(err)
+    }
+    
+    try {
+        await cancelOrders()
+    } catch (e) {
+        console.log('Cancel', e)
     }
 }
 
@@ -364,11 +366,15 @@ const run = async (p) => {
         SELL_ORDERBOOK_LENGTH = BUY_ORDERBOOK_LENGTH = ORDERBOOK_LENGTH
 
         if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
-            buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
-            BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            if ((defaultVolume * ORDERBOOK_LENGTH * 2) > parseFloat(quoteTokenBalance.toString(10))) {
+                buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
+                BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            }
         } else {
-            sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
-            SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            if ((defaultVolume * ORDERBOOK_LENGTH * 2) > parseFloat(quoteTokenBalance.toString(10))) {
+                sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
+                SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            }
         }
 
         await runMarketMaker(cancel)
