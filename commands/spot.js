@@ -366,15 +366,11 @@ const run = async (p) => {
         SELL_ORDERBOOK_LENGTH = BUY_ORDERBOOK_LENGTH = ORDERBOOK_LENGTH
 
         if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
-            if ((defaultVolume * ORDERBOOK_LENGTH * 2) > parseFloat(quoteTokenBalance.toString(10))) {
-                buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
-                BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
-            }
+            buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
+            BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
         } else {
-            if ((defaultVolume * ORDERBOOK_LENGTH * 2) > parseFloat(quoteTokenBalance.toString(10))) {
-                sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
-                SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
-            }
+            sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
+            SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
         }
 
         await runMarketMaker(cancel)
