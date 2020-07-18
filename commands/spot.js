@@ -137,10 +137,11 @@ const findGoodPrice = (side) => {
 const cancelOrders = async (nonce) => {
     let lprice = latestPrice.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
     let k = 1
-    let sellCancelHashes = sellOrders.filter(order => {
-        let mmp = sellMinimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
+    let smmp = sellMinimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
+    sellOrders.sort((a, b) => new BigNumber(a.pricepoint).isGreaterThan(new BigNumber(b.pricepoint)) ? 1 : -1)
+    let sellCancelHashes = sellOrders.filter((order, idx) => {    
         let price = new BigNumber(order.pricepoint)
-        if (price.isGreaterThan(lprice.plus(mmp.multipliedBy(SELL_ORDERBOOK_LENGTH)))) {
+        if (price.isGreaterThan(lprice.plus(smmp.multipliedBy(SELL_ORDERBOOK_LENGTH)))) {
             return true
         }
         if (price.isLessThan(lprice)) {
@@ -149,20 +150,27 @@ const cancelOrders = async (nonce) => {
         if (k > SELL_ORDERBOOK_LENGTH) {
             return true
         }
+        if (idx === (SELL_ORDERBOOK_LENGTH - 1)) {
+            return true
+        }
         k++
         return false
     })
     k = 1
-    let buyCancelHashes = buyOrders.filter(order => {
-        let mmp = buyMinimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
+    let bmmp = buyMinimumPriceStepChange.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
+    buyOrders.sort((a, b) => new BigNumber(a.pricepoint).isGreaterThan(new BigNumber(b.pricepoint)) ? -1 : 1)
+    let buyCancelHashes = buyOrders.filter((order, idx) => {
         let price = new BigNumber(order.pricepoint)
-        if (price.isLessThan(lprice.minus(mmp.multipliedBy(BUY_ORDERBOOK_LENGTH)))) {
+        if (price.isLessThan(lprice.minus(bmmp.multipliedBy(BUY_ORDERBOOK_LENGTH)))) {
             return true
         }
         if (price.isGreaterThan(lprice)) {
             return true
         }
         if (k > BUY_ORDERBOOK_LENGTH) {
+            return true
+        }
+        if (idx === (BUY_ORDERBOOK_LENGTH - 1)) {
             return true
         }
         k++
