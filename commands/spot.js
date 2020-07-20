@@ -8,6 +8,8 @@ const { calcPrecision } = require('../utils')
 let defaultAmount = 1 // TOMO
 let defaultMatchedAmount = 1
 let minimumPriceStepChange = 1 // TOMO
+let buyMinimumPriceStepChange = 1 // TOMO
+let sellMinimumPriceStepChange = 1 // TOMO
 let randomRange = 20
 let FIXA = 5 // amount decimals
 let FIXP = 7 // price decimals
@@ -75,6 +77,15 @@ const runMarketMaker = async (cancel = false) => {
             return
         }
         latestPrice = new BigNumber(await getLatestPrice(pair)).multipliedBy(EX_DECIMALS)
+
+        if (SELL_ORDERBOOK_LENGTH > BUY_ORDERBOOK_LENGTH) {
+            latestPrice = latestPrice.minus(buyMinimumPriceStepChange)
+        }
+
+        if (SELL_ORDERBOOK_LENGTH < BUY_ORDERBOOK_LENGTH) {
+            latestPrice = latestPrice.plus(sellMinimumPriceStepChange)
+        }
+
         let oorders = (await tomox.getOrders({ baseToken, quoteToken, status: 'OPEN' })).orders
         let porders = (await tomox.getOrders({ baseToken, quoteToken, status: 'PARTIAL_FILLED' })).orders
         let orders = [...oorders, ...porders]
