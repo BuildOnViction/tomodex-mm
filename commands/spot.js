@@ -250,6 +250,14 @@ const match = async (orderBookData) => {
 
         let price = bestAsk.plus(bestBid).dividedBy(2)
 
+        if (SELL_ORDERBOOK_LENGTH > BUY_ORDERBOOK_LENGTH) {
+            price = bestAsk.minus(bestAsk.minus(bestBid).dividedBy(balanceRate))
+        }
+
+        if (SELL_ORDERBOOK_LENGTH < BUY_ORDERBOOK_LENGTH) {
+            price = bestBid.plus(bestAsk.minus(bestBid).dividedBy(balanceRate))
+        }
+
         let lprice = latestPrice.dividedBy(EX_DECIMALS).multipliedBy(TOKEN_DECIMALS)
 
         if (lprice.isGreaterThan(bestBid) && lprice.isLessThan(bestAsk)) {
@@ -386,10 +394,18 @@ const run = async (p) => {
 
         if (baseTokenBalance.isGreaterThan(quoteTokenBalance)) {
             buyMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
-            BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            if (quoteTokenBalance.isGreaterThan(new BigNumber(defaultVolume).multipliedBy(ORDERBOOK_LENGTH).multipliedBy(2))) {
+                BUY_ORDERBOOK_LENGTH = ORDERBOOK_LENGTH - 1
+            } else {
+                BUY_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            }
         } else {
             sellMinimumPriceStepChange = minimumPriceStepChange.multipliedBy(balanceRate)
-            SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            if (baseTokenBalance.isGreaterThan(new BigNumber(defaultVolume).multipliedBy(ORDERBOOK_LENGTH).multipliedBy(2))) {
+                SELL_ORDERBOOK_LENGTH = ORDERBOOK_LENGTH - 1
+            } else {
+                SELL_ORDERBOOK_LENGTH = Math.ceil(ORDERBOOK_LENGTH/balanceRate)
+            }
         }
 
         await runMarketMaker(cancel)
