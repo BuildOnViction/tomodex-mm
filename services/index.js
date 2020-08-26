@@ -7,7 +7,7 @@ module.exports = (priceProvider = 'binance') => {
         case 'binance':
             return Binance
         case 'ftx':
-            return Fxt
+            return Ftx
         case 'coingecko':
             return Coingecko
         default:

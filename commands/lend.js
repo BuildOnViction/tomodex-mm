@@ -1,7 +1,7 @@
 const TomoX = require('tomoxjs')
 const BigNumber = require('bignumber.js')
 const config = require('config')
-const { getUSDPrice } = require('../services')(config.get('priceProvider')
+const { getUSDPrice } = require('../services')(config.get('priceProvider'))
 
 let lendingToken = ''
 let term = ''

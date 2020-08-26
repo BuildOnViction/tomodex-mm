@@ -1,9 +1,9 @@
-const { getLatestPrice, getUSDPrice } = require('../services')(coinfig.get('priceProvider'))
 const TomoX = require('tomoxjs')
 const TomoJS = require('tomojs')
 const BigNumber = require('bignumber.js')
 const config = require('config')
 const { calcPrecision } = require('../utils')
+const { getLatestPrice, getUSDPrice } = require('../services')(config.get('priceProvider'))
 
 let defaultAmount = 1 // TOMO
 let defaultMatchedAmount = 1
