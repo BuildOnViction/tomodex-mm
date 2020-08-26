@@ -27,6 +27,7 @@
     "volume": 10,
     "matchedVolume": 10,
     "lendingVolume": 500,
+    "priceProvider": "binance",
     "step": 0.01,
     "lendStep": 0.1
 }

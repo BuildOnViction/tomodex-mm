@@ -1,4 +1,4 @@
-const { getLatestPrice, getUSDPrice } = require('../services/price')
+const { getLatestPrice, getUSDPrice } = require('../services')(coinfig.get('priceProvider'))
 const TomoX = require('tomoxjs')
 const TomoJS = require('tomojs')
 const BigNumber = require('bignumber.js')
