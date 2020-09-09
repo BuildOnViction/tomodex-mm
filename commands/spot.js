@@ -18,8 +18,8 @@ let BUY_ORDERBOOK_LENGTH = config.get('orderbookLength')
 let SELL_ORDERBOOK_LENGTH = config.get('orderbookLength')
 let tomox = new TomoX()
 let pair = 'TOMO-BTC'
-let baseToken = config.get(`${pair}.baseToken`)
-let quoteToken = config.get(`${pair}.quoteToken`)
+let baseToken = 'TOMO'
+let quoteToken = 'BTC'
 let TOKEN_DECIMALS = 1e18
 let BASE_TOKEN_DECIMALS = 1e18
 let EX_DECIMALS = 1e8
@@ -433,6 +433,7 @@ function getStepRate(baseTokenBalance, quoteTokenBalance) {
             return 10 - (i - 1)
         }
     }
+    return 10
 }
 
 module.exports = { run }
